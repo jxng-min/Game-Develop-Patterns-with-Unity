@@ -1,0 +1,309 @@
+커맨드 패턴
+===
+
+### 01. 개요
+
+</br>
+
+* 커맨드 패턴을 이용하면 게임의 리플레이 시스템을 구현 가능
+
+* 플레이어 컨트롤러 입력과 그에 해당하는 타임스탬프를 기록
+
+* 커맨드 패턴을 사용하는 방식으로 올바른 순서와 타이밍을 기록한 입력 재생 가능
+
+</br>
+
+* 커맨드 패턴은 **액션을 수행하거나 상태 변경을 트리거하는 데 필요한 정보를 캡슐화**
+    + **액션을 수행할 대상 객체와 분리**
+
+</br>
+
+--------------------------------------------------------------------------
+
+</br>
+
+### 02. 커맨드 패턴의 이해
+
+</br>
+
+키보드의 스페이스 바를 누르면 장애물을 뛰어넘는 플랫폼 게임을 가정하자.
+
+해당하는 입력 키를 입력하면 캐릭터가 상태를 변경하고 점프하도록 요청한다.
+
+* InputHandler: 플레이거가 스페이스 바 입력을 수신하는 클래스
+
+* PlayerCtrl: 키를 누르면 점프 액션을 트리거하는 클래스
+
+</br>
+
+#### InputHandler.cs(Simple)
+
+```C#
+using UnityEngine;
+using System.Collections;
+
+public class InputHandler: MonoBehaviour
+{
+    private void Update()
+    {
+        if(Input.GetKeyDown("space"))
+            PlayerCtrl.Jump();
+    }
+}
+```
+</br>
+
+* 플레이어의 입력을 기록하고 되돌리며 리플레이를 할 때 복잡해질 가능성 ↑
+
+* 커맨드 패턴을 사용하면 **작업 실행 방법을 아는 객체에서 작업을 실행하는 객체를 분리 가능**
+
+</br>
+</br>
+
+#### InputHandler.cs(Command Pattern)
+
+```C#
+using UnityEngine;
+using System.Collections;
+
+public class InputHandler: MonoBehaviour
+{
+    [SerializedField]
+    private PlayeCtrl m_player_ctrl;
+    
+    private Command m_space_button;
+
+    private void Start()
+    {
+        m_space_button = new JumpCommand();
+    }
+
+    private void Update()
+    {
+        if(Input.GetKeyDown("Space"))
+            m_space_button.Excute(m_player_ctrl);
+    }
+}
+```
+</br>
+
+* 플레이어가 스페이스 바를 누를 때 **m_player_ctrl을 직접 호출 ×**
+
+* 점프 액션을 수행하는 데 필요한 모든 정보를 객체 내에서 캡슐화
+    + 큐에 넣고 다시 실행이 가능하도록 구현
+
+</br>
+</br>
+
+#### 커맨드 패턴 UML 다이어그램
+
+</br>
+
+</br>
+
+* invoker
+    + 명령을 실행하는 방법을 알고 실행한 명령을 즐겨찾기할 수도 있는 객체
+
+* receiver
+    + 명령을 받아서 수행할 수 있는 종류의 객체
+
+* CommandBase
+    + 개별 ConcreteCommand 클래스가 무조건 상속해야 하는 추상 클래스
+    + invoker가 특정 명령을 실행하기 위해 호출할 수 있는 Execute()를 노출
+
+</br>
+
+--------------------------------------------------------------------------
+
+</br>
+
+### 03. 커맨드 패턴의 장단점
+
+</br>
+
+* 장점
+    + 분리
+        - 커맨드 패턴은 실행 방법을 아는 객체에게서 작업을 호출하는 객체를 분리 가능
+        - 이 분리 계층으로 즐겨찾기와 시퀀스 작업을 수행하는 중개자를 추가 가능
+    + 시퀀싱
+        - 커맨드 패턴은 Undo/Replay 기능, 매크로, 명령 큐의 구현을 허용하고 사용자 입력을 큐에 푸시하는 작업을 용이하게 함
+
+* 단점
+    + 복잡성
+        - 커맨드 패턴을 구현하려면 수많은 클래스가 필요
+        - 패턴으로 만들어진 코드의 유지 및 보수를 위해 패턴 이해 필수
+        - 특정 목표 없이 커맨드 패턴을 사용한다면 불필요하고 복잡해지기만 할 수 있음
+
+</br>
+
+--------------------------------------------------------------------------
+
+</br>
+
+### 04. 커맨드 패턴을 사용하는 경우
+
+* Undo
+    + 일반적인 에디터에서 볼 수 있는 Undo 및 Replay 시스템을 구현 가능
+
+* Macro
+    + 공격/방어 콤보를 기록하고 자동으로 입력 키에 적용하여 실행할 수 있는 매크로 기록 시스템 구현 가능
+
+* 자동화
+    + 봇이 자동으로 그리고 순차적으로 실행할 명령 집합을 기록하는 자동화 과정 구현 가능
+
+</br>
+
+--------------------------------------------------------------------------
+
+</br>
+
+### 05. 커맨드 패턴의 구현
+
+</br>
+
+1. 먼저 Execute()를 가지는 Command 추상 클래스를 구현한다.
+
+</br>
+
+```C#
+public abstract class Command
+{
+    public abstract void Execute();
+}
+```
+</br>
+</br>
+
+2. Command에서 파생되는 구체화 클래스를 작성하고 Execute()를 구현한다. 그 후 실행할 액션을 캡슐화 한다.
+
+</br>
+
+```C#
+namespace _Command
+{
+    // 터보 차저 토글
+    public class ToggleTurbo: Command
+    {
+        private BikeCtrl m_bike_ctrl;
+
+        public ToggleTurbo(BikeCtrl bike_ctrl)
+        {
+            m_bike_ctrl = bike_ctrl;
+        }
+
+        public override void Execute()
+        {
+            m_bike_ctrl.ToggleTurbo();
+        }
+    }
+
+    // 좌회전
+    public class TurnLeft: Command
+    {
+        private BikeCtrl m_bike_ctrl;
+
+        public TurnLeft(BikeCtrl bike_ctrl)
+        {
+            m_bike_ctrl = bike_ctrl;
+        }
+
+        public override void Execute()
+        {
+            m_bike_ctrl.Turn(BikeCtrl.Direction.Left);
+        }
+    }
+
+    // 우회전
+    public class TurnRight: Command
+    {
+        private BikeCtrl m_bike_ctrl;
+
+        public TurnRight(BikeCtrl bike_ctrl)
+        {
+            m_bike_ctrl = bike_ctrl;
+        }
+
+        public override void Execute()
+        {
+            m_bike_ctrl.Turn(BikeCtrl.Direction.Right);
+        }
+    }
+}
+```
+</br>
+</br>
+
+3. 리플레이 시스템을 작동시키는 Invoker 클래스를 구현한다.
+
+</br>
+
+```C#
+using UnityEngine;
+using System.Linq;
+using Syste,.Collections.Generic;
+
+namespace _Command
+{
+    class Invoker: MonoBehaviour
+    {
+        private bool m_is_recording;
+        private bool m_is_replaying;
+        private float m_replay_time;
+        private float m_recording_time;
+        private SortedList<float, Command> m_recorded_commands = new SortedList<float, Command>();
+
+        public void ExecuteCommand(Command command)
+        {
+            command.Execute();
+
+            if(m_is_recording)
+                m_recorded_commands.Add(m_recorded_time, command);
+            
+            Debug.Log("Recorded Time: " + m_recording_time);
+            Debug.Log("Rocorded Command: " + command); 
+        }
+
+        public void Record()
+        {
+            m_recording_time = 0.0f;
+            m_is_recording = true;
+        }
+
+        public void Replay()
+        {
+            m_replay_time = 0.0f;
+            m_is_replaying = true;
+
+            if(m_recorded_commands.Count <= 0)
+                Debug.LogError("No Commands to replay.");
+            
+            m_recorded_commands.Reverse();
+        }
+
+        private void FixedUpdate()
+        {
+            if(m_is_recording)
+                m_recording_time += Time.fixedDeltaTime;
+
+            if(m_is_replaying)
+            {
+                m_replay_time += Time.deltaTime;
+
+                if(m_recorded_commands.Any())
+                {
+                    if(Mathf.Approximately(m_replay_time, m_recorded_commands.Keys[0]))
+                    {
+                        Debug.Log("Replay Time: " + m_replay_time);
+                        Debug.Log("Replay Command: " + m_recorded_commands.Values[0]);
+
+                        m_recorded_commands.Values[0].Execute();
+                        m_recorded_commands.RemoveAt(0); 
+                    }
+                }
+            }
+        }
+    }
+}
+```
+</br>
+</br>
